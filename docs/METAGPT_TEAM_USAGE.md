@@ -10,7 +10,7 @@
 - Repo: `FoundationAgents/MetaGPT`
 - Commit: `11cdf466d042aece04fc6cfd13b28e1a70341b1f`
 
-如果你更换 MetaGPT 版本，SDK API 可��变化，需要同步更新本 runner。
+如果你更换 MetaGPT 版本，SDK API 可能变化，需要同步更新本 runner。
 
 ## 1. 源码安装 MetaGPT（方式 2）
 
@@ -27,23 +27,41 @@ pip install -U pip
 pip install -e .
 ```
 
-## 2. 配置环境变量（必须手动修改）
+## 2. 配置 LLM（推荐改 MetaGPT 的 config2.yaml）
 
-> 不要把任何真实 key 写进仓库。
+> 不要把任何真实 key 写进 **metaGptMall** 仓库。
 
-以 OpenAI 风格为例：
+MetaGPT 这一版会读取 `MetaGPT/config/config2.yaml`（你的本机 MetaGPT clone 里）。常见位置示例：
+- macOS: `/Users/<you>/git/MetaGPT/config/config2.yaml`
 
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-export OPENAI_MODEL="gpt-4o-mini"  # 可选
+### 2.1 使用 OpenAI
+
+在 `config2.yaml` 中配置（示例）：
+
+```yaml
+llm:
+  api_type: "openai"
+  model: "gpt-4o-mini"
+  base_url: "https://api.openai.com/v1"
+  api_key: "<YOUR_OPENAI_API_KEY>"
 ```
 
-你也可以使用 `.env`（确保已在 `.gitignore` 中）：
+### 2.2 使用国产模型（DeepSeek，推荐：deepseek-reasoner）
 
-```bash
-OPENAI_API_KEY=your-api-key-here
-OPENAI_MODEL=gpt-4o-mini
+DeepSeek 提供 OpenAI-compatible 接口，因此仍使用 `api_type: "openai"`，仅替换 `base_url / model / api_key`。
+
+```yaml
+llm:
+  api_type: "openai"
+  model: "deepseek-reasoner"   # 若报错可降级为 deepseek-chat
+  base_url: "https://api.deepseek.com/v1"
+  api_key: "<YOUR_DEEPSEEK_API_KEY>"
 ```
+
+如果出现以下报错：
+- `not a chat model` / `v1/chat/completions endpoint`：说明你填了 instruct/completions-only 模型，请改为 chat 模型（如 `deepseek-chat` / `gpt-4o-mini`）。
+- `model_not_found`：模型名不可用或无权限。
+- `insufficient_quota`：额度不足（建议换更便宜模型如 `gpt-4o-mini`，或检查计费）。
 
 ## 3. 安装本仓库 runner 依赖
 
@@ -53,17 +71,19 @@ pip install -r metagpt_team/requirements.txt
 
 ## 4. 运行（多角色）
 
-### 4.1 直接给任务文本
+建议用 `-m` 方式运行，避免 `ModuleNotFoundError: metagpt_team`：
 
 ```bash
-bash scripts/metagpt_team_run.sh "为 metaGptMall 设计下单流程的 PRD、架构、测试计划与开发任务拆分"
+python3 -m metagpt_team.run_team "为 metaGptMall 设计下单流程的 PRD、架构、测试计划与开发任务拆分"
 ```
 
-### 4.2 使用任务文件
+也可以用任务文件：
 
 ```bash
-bash scripts/metagpt_team_run.sh --task-file METAGPT_TASK.md
+python3 -m metagpt_team.run_team --task-file METAGPT_TASK.md
 ```
+
+> 说明：仓库里目前的脚本文件路径是 `metagpt_team/metagpt_team_run.sh`（不是 `scripts/metagpt_team_run.sh`）。
 
 ## 5. 输出
 
@@ -75,19 +95,21 @@ metagpt_outputs/<YYYYMMDD_HHMMSS>/
   ARCHITECTURE.md
   QA_TESTPLAN.md
   DEV_PLAN.md
+  CODE_SKELETON.md
   SUMMARY.md
   prompt_context.md
 ```
 
 其中 `prompt_context.md` 是本次运行使用的“上下文拼接结果”，便于追溯。
 
-## 6. 产物回写仓库（推荐流程）
+## 6. latest 快照（可提交到仓库）
 
-1) 先在输出目录 review 文档
-2) 只挑选“确定要保留”的文档/代码片段回写到仓库
-3) 保持一次 commit 做一件事
+运行结束后，runner 会把关键产物同步覆盖到：
+- `metagpt_artifacts/latest/`
+
+该目录用于在仓库中保留“最新一版可 review 的文档快照”。
 
 ## 7. 常见问题
 
 - 如果报 `ImportError` / `AttributeError`：99% 是 MetaGPT 版本不一致。请确认 checkout 的 commit 与本文一致。
-- 如果模型/Key 不生效：检查你的环境变量是否被 MetaGPT 读取（不同 provider 环境变量名不同）。
+- 如果模型/Key 不生效：优先检查 `MetaGPT/config/config2.yaml` 是否仍是 `YOUR_API_KEY`、以及 `model/base_url` 是否正确。
