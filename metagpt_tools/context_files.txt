@@ -1,0 +1,12 @@
+# List of context files to feed to MetaGPT.
+# Paths are relative to the repository root.
+# Lines starting with '#' and blank lines are ignored.
+PROJECT_CONTEXT.md
+docs/ARCHITECTURE.md
+docs/API.md
+docs/PORTS.md
+docs/ROCKETMQ_TOPICS.md
+docs/REDIS_KEYS.md
+docs/INFRA.md
+docs/INFRA_B.md
+README.md

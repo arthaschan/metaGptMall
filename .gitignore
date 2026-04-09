@@ -1,0 +1,12 @@
+# MetaGPT output artifacts (do not commit generated output)
+metagpt_outputs/
+
+# Environment files (do not commit API keys)
+.env
+.env.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/

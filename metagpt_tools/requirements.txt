@@ -1,0 +1,5 @@
+# Runtime dependencies for the metagpt_tools wrapper.
+# MetaGPT itself must be installed separately:
+#   pip install metagpt
+# See docs/METAGPT_USAGE.md for full installation instructions.
+python-dotenv>=1.0.1
