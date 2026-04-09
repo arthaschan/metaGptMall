@@ -1,20 +1,55 @@
-version: '3'
 services:
-  backend:
-    build:
-      context: ./backend
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: test
+      MYSQL_PASSWORD: 123456
     ports:
-      - "8080:8080"
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "8081:8080"
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   redis:
-    image: redis:6.0
+    image: redis:7.4
     ports:
       - "6379:6379"
-  rocketmq:
-    image: rocketmq-4.9.x
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:4.9.7
+    container_name: rocketmq-namesrv
     ports:
       - "9876:9876"
+    command: ["sh", "mqnamesrv"]
+    environment:
+      - JAVA_OPT_EXT=-server -Xms256m -Xmx256m -Xmn128m
+
+  rocketmq-broker:
+    image: apache/rocketmq:4.9.7
+    container_name: rocketmq-broker
+    depends_on:
+      - rocketmq-namesrv
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    environment:
+      - NAMESRV_ADDR=rocketmq-namesrv:9876
+      - JAVA_OPT_EXT=-server -Xms512m -Xmx512m -Xmn256m
+    volumes:
+      - ./rocketmq/broker.conf:/home/rocketmq/rocketmq-4.9.7/conf/broker.conf
+      - rocketmq_store:/home/rocketmq/store
+    command: ["sh", "mqbroker", "-c", "/home/rocketmq/rocketmq-4.9.7/conf/broker.conf", "-n", "rocketmq-namesrv:9876"]
+
+volumes:
+  mysql_data:
+  redis_data:
+  rocketmq_store:
