@@ -163,3 +163,114 @@ web/                ← 前端 Vue 3 源码（由 LLM 生成并写入）
 
 - 如果报 `ImportError` / `AttributeError`：99% 是 MetaGPT 版本不一致。请确认 checkout 的 commit 与本文一致。
 - 如果模型/Key 不生效：优先检查 `MetaGPT/config/config2.yaml` 是否仍是 `YOUR_API_KEY`、以及 `model/base_url` 是否正确。
+## 8. 命令速查（从生成文档到生成代码）
+
+> 目标：你能快速记住“生成说明文档（plan）/生成后端+前端代码（impl）/如何运行验证”的命令。
+
+### 8.1 一次性准备（只做一次）
+
+#### A) 安装 MetaGPT（固定 commit）
+```bash
+git clone https://github.com/FoundationAgents/MetaGPT.git
+cd MetaGPT
+git checkout 11cdf466d042aece04fc6cfd13b28e1a70341b1f
+
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e .
+```
+
+#### B) 配置 DeepSeek（OpenAI-compatible）
+编辑（在 MetaGPT 仓库里��：
+`MetaGPT/config/config2.yaml`
+
+示例：
+```yaml
+llm:
+  api_type: "openai"
+  model: "deepseek-reasoner"
+  base_url: "https://api.deepseek.com/v1"
+  api_key: "<YOUR_DEEPSEEK_API_KEY>"
+```
+
+> 注意：不要把任何真实 key 提交到 `metaGptMall` 仓库。
+
+#### C) 安装本仓库 runner 依赖
+在 `metaGptMall` 仓库根目录：
+```bash
+cd /Users/arthas/git/metaGptMall
+pip install -r metagpt_team/requirements.txt
+```
+
+---
+
+### 8.2 生成“说明文档/计划”（plan 模式：默认）
+
+#### A) 直接给任务文本
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode plan "为 metaGptMall 设计下单流程：输出 PRD/架构/测试计划/开发计划/代码骨架"
+```
+
+#### B) 使用任务文件
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode plan --task-file METAGPT_TASK.md
+```
+
+输出目录：
+- 原始输出：`metagpt_outputs/<timestamp>/`
+- 同步快照：`metagpt_artifacts/latest/`
+
+---
+
+### 8.3 生成“可运行后端+前端代码”（impl 模式：写入 server/ + web/）
+
+#### A) 使用任务文件（推荐）
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode impl --task-file METAGPT_TASK.md
+```
+
+#### B) 只预览会写哪些文件（不落盘）
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode impl --task-file METAGPT_TASK.md --dry-run
+```
+
+#### C) 允许覆盖已有文件（第二次生成/修复时常用）
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode impl --task-file METAGPT_TASK.md --overwrite
+```
+
+排查“为什么没生成前端/没生成测试”的第一入口：
+- 看原始输出是否有 `file path=web/...` 和 `file path=server/src/test/...`
+```bash
+ls -1 metagpt_outputs | tail -n 3
+sed -n '1,200p' metagpt_outputs/<最新时间戳>/IMPL_RAW.md
+grep -n "```file path=" metagpt_outputs/<最新时间戳>/IMPL_RAW.md | head
+```
+
+---
+
+### 8.4 运行后端（Spring Boot 3）
+
+```bash
+cd /Users/arthas/git/metaGptMall/server
+mvn test
+mvn spring-boot:run
+```
+
+---
+
+### 8.5 运行前端（Vue 3）
+
+```bash
+cd /Users/arthas/git/metaGptMall/web
+npm install
+npm run dev
+```
+
+> 以 `web/README.md`（生成后会有）为准，若使用 pnpm/yarn 请按 README 替换命令。
