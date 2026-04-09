@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.arthaschan.metagptmall.mapper.OrderItemMapper">
+
+  <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO order_items (order_id, product_id, title_snapshot, unit_price_cents, quantity)
+    VALUES
+    <foreach collection="list" item="item" separator=",">
+      (#{item.orderId}, #{item.productId}, #{item.titleSnapshot}, #{item.unitPriceCents}, #{item.quantity})
+    </foreach>
+  </insert>
+
+</mapper>

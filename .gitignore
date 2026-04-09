@@ -1,3 +1,4 @@
+backend/target/
 # MetaGPT output artifacts (do not commit generated output)
 metagpt_outputs/
 

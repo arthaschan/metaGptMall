@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.arthaschan.metagptmall.mapper.UserMapper">
+
+  <resultMap id="UserMap" type="com.arthaschan.metagptmall.entity.User">
+    <id property="id" column="id"/>
+    <result property="email" column="email"/>
+    <result property="passwordHash" column="password_hash"/>
+    <result property="role" column="role"/>
+    <result property="createdAt" column="created_at"/>
+  </resultMap>
+
+  <select id="findByEmail" resultMap="UserMap">
+    SELECT id, email, password_hash, role, created_at
+    FROM users
+    WHERE email = #{email}
+    LIMIT 1
+  </select>
+
+  <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO users (email, password_hash, role)
+    VALUES (#{email}, #{passwordHash}, #{role})
+  </insert>
+
+</mapper>
