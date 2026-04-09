@@ -22,15 +22,27 @@ def _call_metagpt_sdk(prompt: str) -> str:
     Pinned MetaGPT commit (user): 11cdf466d042aece04fc6cfd13b28e1a70341b1f
     """
     try:
-        # Most common entrypoint style seen in MetaGPT repos
         from metagpt.llm import LLM  # type: ignore
+        import asyncio
+        import inspect
 
         llm = LLM()
+
+        # Prefer async API if present
+        if hasattr(llm, "aask"):
+            res = llm.aask(prompt)  # type: ignore
+
+            # If it's a coroutine, run it
+            if inspect.iscoroutine(res):
+                return str(asyncio.run(res))
+
+            # Some versions may return plain string already
+            return str(res)
+
+        # Fallback to sync ask
         if hasattr(llm, "ask"):
             return str(llm.ask(prompt))  # type: ignore
-        if hasattr(llm, "aask"):
-            out = llm.aask(prompt)  # type: ignore
-            return str(out)
+
         raise AttributeError("LLM has no ask/aask method")
     except Exception as e:
         raise RuntimeError(
@@ -38,7 +50,6 @@ def _call_metagpt_sdk(prompt: str) -> str:
             "Edit metagpt_team/roles.py::_call_metagpt_sdk to match your installed MetaGPT commit.\n"
             f"Original error: {e!r}"
         )
-
 
 def build_team_and_run(task: str, context: str) -> dict[str, str]:
     pm_expected = (
