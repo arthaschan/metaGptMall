@@ -153,3 +153,54 @@ def build_team_and_run(task: str, context: str) -> dict[str, str]:
         "dev_plan": dev,
         "code_skeleton": skeleton,
     }
+
+
+def build_impl_and_run(task: str, context: str) -> str:
+    """Generate full runnable implementation code as fenced file blocks.
+
+    Backend uses Spring Boot 3.x (placed under server/).
+    Frontend uses Vue 3 (placed under web/).
+
+    Each file is emitted with this strict format so the caller can parse it::
+
+        ```file path=server/src/main/java/...
+        // java source
+        ```
+
+        ```file path=web/src/components/...
+        <!-- vue SFC -->
+        ```
+    """
+    impl_expected = (
+        "Generate full, runnable implementation code for the task described above.\n"
+        "\n"
+        "Tech stack constraints:\n"
+        "  - Backend: Spring Boot 3.x, REST API, Java 17+\n"
+        "    - Place every backend file under server/ (e.g. server/src/main/java/...)\n"
+        "    - Include pom.xml, application.yml, entity classes, repositories,\n"
+        "      services, controllers, and any needed config classes.\n"
+        "  - Frontend: Vue 3 (Composition API), Vite, Element Plus\n"
+        "    - Place every frontend file under web/ (e.g. web/src/views/...)\n"
+        "    - Include package.json, vite.config.js, main.js, router, store,\n"
+        "      and all Vue SFC components needed.\n"
+        "\n"
+        "Output format — use ONLY the following fenced-block syntax for every file.\n"
+        "Do NOT use any other heading or format for file content:\n"
+        "\n"
+        "    ```file path=server/path/to/File.java\n"
+        "    // full file content here\n"
+        "    ```\n"
+        "\n"
+        "    ```file path=web/src/views/SomeView.vue\n"
+        "    <!-- full file content here -->\n"
+        "    ```\n"
+        "\n"
+        "Rules:\n"
+        "  1. Each file block MUST start with ```file path=<relative-path> on its own line.\n"
+        "  2. The closing ``` must be on its own line.\n"
+        "  3. Paths MUST start with server/ or web/.\n"
+        "  4. Output ONLY the file blocks and brief inline comments between them.\n"
+        "  5. Do NOT produce placeholder stubs — write real, compilable/runnable code.\n"
+    )
+
+    return _call_metagpt_sdk(_section_prompt("Senior Full-Stack Engineer", task, context, impl_expected))

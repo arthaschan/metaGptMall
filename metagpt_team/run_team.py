@@ -55,12 +55,31 @@ def sync_latest(src_dir: Path, latest_dir: Path, filenames: list[str]) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="MetaGPT team runner for metaGptMall.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Modes:\n"
+            "  plan  (default) Generate PRD / architecture / test plan / dev plan /\n"
+            "                  code skeleton Markdown into metagpt_outputs/ and sync\n"
+            "                  to metagpt_artifacts/latest/.\n"
+            "  impl            Generate full runnable implementation code (Spring Boot\n"
+            "                  3.x backend + Vue 3 frontend) and write source files\n"
+            "                  directly into server/ and web/ inside the repository.\n"
+        ),
+    )
     ap.add_argument("task", nargs="?", default="")
     ap.add_argument("--task-file", default="")
     ap.add_argument("--out-dir", default="")
     ap.add_argument("--context-list", default=str(ROOT / "metagpt_tools" / "context_files.txt"))
     ap.add_argument("--latest-dir", default=str(ROOT / "metagpt_artifacts" / "latest"))
+    ap.add_argument(
+        "--mode",
+        choices=["plan", "impl"],
+        default="plan",
+        help="Runner mode: 'plan' (default) generates Markdown artifacts; "
+             "'impl' generates and writes runnable source code into server/ and web/.",
+    )
     args = ap.parse_args()
 
     task = args.task
@@ -85,45 +104,71 @@ def main() -> int:
     context_md = build_context_markdown(context_files)
     write_text(outs.context, context_md)
 
-    from metagpt_team.roles import build_team_and_run  # late import for clearer error
+    if args.mode == "impl":
+        from metagpt_team.roles import build_impl_and_run  # late import for clearer error
+        from metagpt_team.impl_writer import parse_file_blocks, write_impl_files
 
-    artifacts = build_team_and_run(task=task, context=context_md)
+        raw = build_impl_and_run(task=task, context=context_md)
+        # Save raw LLM output for audit / replay
+        write_text(out_dir / "IMPL_RAW.md", raw)
 
-    write_text(outs.pm_prd, artifacts.get("pm_prd", ""))
-    write_text(outs.arch, artifacts.get("architecture", ""))
-    write_text(outs.qa, artifacts.get("qa_testplan", ""))
-    write_text(outs.dev, artifacts.get("dev_plan", ""))
-    write_text(outs.skeleton, artifacts.get("code_skeleton", ""))
+        blocks = parse_file_blocks(raw)
+        written = write_impl_files(blocks, repo_root=ROOT)
 
-    write_text(
-        outs.summary,
-        (
-            "# Summary\n\n"
-            "Generated PM/Architect/QA/Dev artifacts.\n\n"
-            "- MetaGPT pinned commit: 11cdf466d042aece04fc6cfd13b28e1a70341b1f\n"
-            f"- Output dir: {out_dir}\n"
-        ),
-    )
+        write_text(
+            outs.summary,
+            (
+                "# Summary (impl mode)\n\n"
+                f"Generated {len(written)} source file(s) into server/ and web/.\n\n"
+                "- MetaGPT pinned commit: 11cdf466d042aece04fc6cfd13b28e1a70341b1f\n"
+                f"- Raw LLM output: {out_dir / 'IMPL_RAW.md'}\n"
+                "- Files written:\n"
+                + "".join(f"  - {p.relative_to(ROOT)}\n" for p in written)
+            ),
+        )
 
-    latest_dir = Path(args.latest_dir)
-    if not latest_dir.is_absolute():
-        latest_dir = (ROOT / latest_dir).resolve()
+        print(f"[metagpt_team] impl done. {len(written)} file(s) written.")
+        print(f"[metagpt_team] raw output: {out_dir / 'IMPL_RAW.md'}")
+    else:
+        from metagpt_team.roles import build_team_and_run  # late import for clearer error
 
-    sync_latest(
-        src_dir=out_dir,
-        latest_dir=latest_dir,
-        filenames=[
-            "PM_PRD.md",
-            "ARCHITECTURE.md",
-            "QA_TESTPLAN.md",
-            "DEV_PLAN.md",
-            "CODE_SKELETON.md",
-            "SUMMARY.md",
-        ],
-    )
+        artifacts = build_team_and_run(task=task, context=context_md)
 
-    print(f"[metagpt_team] done. outputs: {out_dir}")
-    print(f"[metagpt_team] synced latest: {latest_dir}")
+        write_text(outs.pm_prd, artifacts.get("pm_prd", ""))
+        write_text(outs.arch, artifacts.get("architecture", ""))
+        write_text(outs.qa, artifacts.get("qa_testplan", ""))
+        write_text(outs.dev, artifacts.get("dev_plan", ""))
+        write_text(outs.skeleton, artifacts.get("code_skeleton", ""))
+
+        write_text(
+            outs.summary,
+            (
+                "# Summary\n\n"
+                "Generated PM/Architect/QA/Dev artifacts.\n\n"
+                "- MetaGPT pinned commit: 11cdf466d042aece04fc6cfd13b28e1a70341b1f\n"
+                f"- Output dir: {out_dir}\n"
+            ),
+        )
+
+        latest_dir = Path(args.latest_dir)
+        if not latest_dir.is_absolute():
+            latest_dir = (ROOT / latest_dir).resolve()
+
+        sync_latest(
+            src_dir=out_dir,
+            latest_dir=latest_dir,
+            filenames=[
+                "PM_PRD.md",
+                "ARCHITECTURE.md",
+                "QA_TESTPLAN.md",
+                "DEV_PLAN.md",
+                "CODE_SKELETON.md",
+                "SUMMARY.md",
+            ],
+        )
+
+        print(f"[metagpt_team] done. outputs: {out_dir}")
+        print(f"[metagpt_team] synced latest: {latest_dir}")
     return 0
 
 

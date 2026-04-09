@@ -6,8 +6,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/metagpt_team_run.sh "your task"
-  bash scripts/metagpt_team_run.sh --task-file METAGPT_TASK.md
+  bash metagpt_team/metagpt_team_run.sh "your task"
+  bash metagpt_team/metagpt_team_run.sh --task-file METAGPT_TASK.md
+  bash metagpt_team/metagpt_team_run.sh --mode impl "implement the checkout flow"
+  bash metagpt_team/metagpt_team_run.sh --task-file METAGPT_TASK.md --mode impl
+
+Options:
+  --task-file FILE  Read task from file instead of positional argument
+  --mode MODE       Runner mode: 'plan' (default) or 'impl'
+                    plan: generate Markdown artifacts into metagpt_outputs/
+                    impl: generate code into server/ and web/
 
 Env:
   OPENAI_API_KEY  required
@@ -17,6 +25,7 @@ EOF
 
 TASK=""
 TASK_FILE=""
+MODE=""
 
 if [[ $# -eq 0 ]]; then
   usage
@@ -27,6 +36,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --task-file)
       TASK_FILE="$2"
+      shift 2
+      ;;
+    --mode)
+      MODE="$2"
       shift 2
       ;;
     -h|--help)
@@ -60,6 +73,10 @@ if [[ -n "${TASK_FILE}" ]]; then
   ARGS+=("--task-file" "${TASK_FILE}")
 else
   ARGS+=("${TASK}")
+fi
+
+if [[ -n "${MODE}" ]]; then
+  ARGS+=("--mode" "${MODE}")
 fi
 
 "${PYTHON}" "${ROOT_DIR}/metagpt_team/run_team.py" "${ARGS[@]}"
