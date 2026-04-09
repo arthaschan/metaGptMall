@@ -3,10 +3,8 @@ from __future__ import annotations
 
 def _section_prompt(role_name: str, task: str, context: str, expected: str) -> str:
     return (
-        f"You are acting as {role_name}.
-"
-        "Follow the repository constraints in the provided context.
-\n"
+        f"You are acting as {role_name}.\n"
+        "Follow the repository constraints in the provided context.\n\n"
         "=== TASK ===\n"
         f"{task}\n\n"
         "=== CONTEXT ===\n"
@@ -14,7 +12,6 @@ def _section_prompt(role_name: str, task: str, context: str, expected: str) -> s
         "=== OUTPUT REQUIREMENTS ===\n"
         f"{expected}\n"
     )
-
 
 def _classify_llm_error(e: Exception) -> str:
     """Return a user-actionable hint for common MetaGPT/OpenAI failures."""
