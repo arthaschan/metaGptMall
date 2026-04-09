@@ -3,8 +3,10 @@ from __future__ import annotations
 
 def _section_prompt(role_name: str, task: str, context: str, expected: str) -> str:
     return (
-        f"You are acting as {role_name}.\n"
-        "Follow the repository constraints in the provided context.\n\n"
+        f"You are acting as {role_name}.
+"
+        "Follow the repository constraints in the provided context.
+\n"
         "=== TASK ===\n"
         f"{task}\n\n"
         "=== CONTEXT ===\n"
@@ -14,13 +16,49 @@ def _section_prompt(role_name: str, task: str, context: str, expected: str) -> s
     )
 
 
-def _call_metagpt_sdk(prompt: str) -> str:
-    """
-    MetaGPT SDK API differs across versions.
-    Keep ALL adaptation inside this function.
+def _classify_llm_error(e: Exception) -> str:
+    """Return a user-actionable hint for common MetaGPT/OpenAI failures."""
+    msg = repr(e)
+    low = msg.lower()
 
-    Pinned MetaGPT commit (user): 11cdf466d042aece04fc6cfd13b28e1a70341b1f
-    """
+    # Pydantic config validation from MetaGPT (api_key placeholder, etc.)
+    if "validationerror" in low and "llm.api_key" in low:
+        return (
+            "MetaGPT config validation failed: llm.api_key is not set. "
+            "Edit MetaGPT config (usually MetaGPT/config/config2.yaml) and set llm.api_key."
+        )
+
+    # OpenAI model not found / not accessible
+    if "model_not_found" in low or "does not exist" in low:
+        return (
+            "The configured model name is not available for your API key. "
+            "Fix llm.model in MetaGPT config/config2.yaml to a model you have access to (e.g. gpt-4o-mini)."
+        )
+
+    # Wrong endpoint: non-chat model used with chat.completions
+    if "not a chat model" in low or "v1/chat/completions" in low:
+        return (
+            "The configured model is not a chat model but MetaGPT is calling the chat.completions endpoint. "
+            "Set llm.model to a chat model (e.g. gpt-4o-mini, gpt-4o, gpt-4.1-mini)."
+        )
+
+    # Quota / billing / rate limit
+    if "insufficient_quota" in low or "you exceeded your current quota" in low:
+        return (
+            "OpenAI API quota/billing is insufficient (insufficient_quota). "
+            "Check OpenAI Billing/limits or switch to a cheaper model (e.g. gpt-4o-mini)."
+        )
+
+    if "rate_limit" in low or "error code: 429" in low:
+        return (
+            "OpenAI rate limit hit (429). Retry later, reduce concurrency, or use a cheaper/smaller model."
+        )
+
+    return ""
+
+
+def _call_metagpt_sdk(prompt: str) -> str:
+    """Call MetaGPT LLM via SDK, with best-effort compatibility across versions."""
     try:
         from metagpt.llm import LLM  # type: ignore
         import asyncio
@@ -31,12 +69,8 @@ def _call_metagpt_sdk(prompt: str) -> str:
         # Prefer async API if present
         if hasattr(llm, "aask"):
             res = llm.aask(prompt)  # type: ignore
-
-            # If it's a coroutine, run it
             if inspect.iscoroutine(res):
                 return str(asyncio.run(res))
-
-            # Some versions may return plain string already
             return str(res)
 
         # Fallback to sync ask
@@ -44,12 +78,18 @@ def _call_metagpt_sdk(prompt: str) -> str:
             return str(llm.ask(prompt))  # type: ignore
 
         raise AttributeError("LLM has no ask/aask method")
+
     except Exception as e:
-        raise RuntimeError(
-            "MetaGPT SDK entrypoint mismatch.\n"
-            "Edit metagpt_team/roles.py::_call_metagpt_sdk to match your installed MetaGPT commit.\n"
-            f"Original error: {e!r}"
+        hint = _classify_llm_error(e)
+        msg = (
+            "MetaGPT call failed.\n"
+            "This is usually NOT an SDK entrypoint issue; it's commonly a config/model/quota problem.\n"
         )
+        if hint:
+            msg += f"Hint: {hint}\n"
+        msg += f"Original error: {e!r}"
+        raise RuntimeError(msg)
+
 
 def build_team_and_run(task: str, context: str) -> dict[str, str]:
     pm_expected = (
