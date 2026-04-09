@@ -85,9 +85,47 @@ python3 -m metagpt_team.run_team --task-file METAGPT_TASK.md
 
 > 说明：仓库里目前的脚本文件路径是 `metagpt_team/metagpt_team_run.sh`（不是 `scripts/metagpt_team_run.sh`）。
 
+## 4b. 运行 impl 模式（生成可运行代码）
+
+使用 `--mode impl` 标志，runner 将调用 LLM 生成完整、可运行的实现代码（Spring Boot 3.x 后端 + Vue 3 前端），并自动将文件写入仓库的 `server/` 和 `web/` 目录。
+
+```bash
+# 通过命令行任务字符串
+python3 -m metagpt_team.run_team --mode impl "实现 metaGptMall 的下单流程：后端 REST API + 前端 Vue3 页面"
+
+# 通过任务文件
+python3 -m metagpt_team.run_team --task-file METAGPT_TASK.md --mode impl
+```
+
+也可以用 Shell 脚本：
+
+```bash
+bash metagpt_team/metagpt_team_run.sh --mode impl "实现下单流程"
+bash metagpt_team/metagpt_team_run.sh --task-file METAGPT_TASK.md --mode impl
+```
+
+### LLM 输出格式
+
+impl 模式要求 LLM 以以下格式输出每个文件：
+
+````
+```file path=server/src/main/java/com/example/mall/order/OrderController.java
+// Java source
+```
+
+```file path=web/src/views/OrderView.vue
+<!-- Vue SFC -->
+```
+````
+
+- 路径必须以 `server/` 或 `web/` 开头
+- runner 会解析所有 ```` ```file path=... ```` 块，并将文件写入仓库对应路径
+- 原始 LLM 输出保存在 `metagpt_outputs/<timestamp>/IMPL_RAW.md` 以备审阅
+
+
 ## 5. 输出
 
-默认输出目录：
+### plan 模式（默认）
 
 ```
 metagpt_outputs/<YYYYMMDD_HHMMSS>/
@@ -101,6 +139,18 @@ metagpt_outputs/<YYYYMMDD_HHMMSS>/
 ```
 
 其中 `prompt_context.md` 是本次运行使用的“上下文拼接结果”，便于追溯。
+
+### impl 模式
+
+```
+metagpt_outputs/<YYYYMMDD_HHMMSS>/
+  IMPL_RAW.md       ← 原始 LLM 输出（含所有 ```file ... ``` 块）
+  SUMMARY.md        ← 写入文件列表摘要
+  prompt_context.md
+
+server/             ← 后端 Spring Boot 3.x 源码（由 LLM 生成并写入）
+web/                ← 前端 Vue 3 源码（由 LLM 生成并写入）
+```
 
 ## 6. latest 快照（可提交到仓库）
 
