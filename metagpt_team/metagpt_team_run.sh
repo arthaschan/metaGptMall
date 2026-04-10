@@ -26,7 +26,8 @@ EOF
 TASK=""
 TASK_FILE=""
 MODE=""
-
+DRY_RUN=""
+OVERWRITE=""
 if [[ $# -eq 0 ]]; then
   usage
   exit 2
@@ -50,6 +51,14 @@ while [[ $# -gt 0 ]]; do
       TASK="$1"
       shift
       ;;
+    --dry-run)
+      DRY_RUN="1"
+      shift
+      ;;
+   --overwrite)
+     OVERWRITE="1"
+     shift
+     ;;
   esac
 done
 
@@ -78,5 +87,10 @@ fi
 if [[ -n "${MODE}" ]]; then
   ARGS+=("--mode" "${MODE}")
 fi
-
+if [[ -n "${DRY_RUN}" ]]; then
+  ARGS+=("--dry-run")
+fi
+if [[ -n "${OVERWRITE}" ]]; then
+  ARGS+=("--overwrite")
+fi
 "${PYTHON}" "${ROOT_DIR}/metagpt_team/run_team.py" "${ARGS[@]}"
