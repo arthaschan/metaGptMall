@@ -80,6 +80,8 @@ def main() -> int:
         help="Runner mode: 'plan' (default) generates Markdown artifacts; "
              "'impl' generates and writes runnable source code into server/ and web/.",
     )
+    ap.add_argument("--dry-run", action="store_true", help="(impl mode) Do not write files; only print what would be written.")
+    ap.add_argument("--overwrite", action="store_true", help="(impl mode) Overwrite existing files.")
     args = ap.parse_args()
 
     task = args.task
