@@ -54,11 +54,14 @@ def _validate_path(rel: str, repo_root: Path) -> Path:
 def write_impl_files(
     blocks: list[tuple[str, str]],
     repo_root: Path,
+    *,
+    dry_run: bool = False,
+    overwrite: bool = False,
 ) -> list[Path]:
     """Write each (relative_path, content) block to *repo_root*.
 
-    Returns the list of absolute paths that were written.
-    Skips blocks whose paths are invalid and prints a warning.
+    - dry_run: only validate & print, do not write files
+    - overwrite: if False and file exists, skip
     """
     written: list[Path] = []
     for rel, content in blocks:
@@ -67,6 +70,16 @@ def write_impl_files(
         except ValueError as exc:
             print(f"[impl_writer] SKIP {rel!r}: {exc}")
             continue
+
+        if target.exists() and not overwrite:
+            print(f"[impl_writer] SKIP {target.relative_to(repo_root)} (exists, use --overwrite)")
+            continue
+
+        if dry_run:
+            print(f"[impl_writer] DRY-RUN would write {target.relative_to(repo_root)}")
+            written.append(target)
+            continue
+
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
             target.write_text(content, encoding="utf-8")
