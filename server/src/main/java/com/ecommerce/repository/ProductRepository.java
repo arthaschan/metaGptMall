@@ -1,20 +1,31 @@
 package com.ecommerce.repository;
 
 import com.ecommerce.entity.Product;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Optional;
 
-@Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {
-    List<Product> findByActiveTrue();
+@Mapper
+public interface ProductRepository {
 
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.stock > 0")
-    List<Product> findAvailableProducts();
+	@Select("""
+			SELECT id, title, description, price_cents, currency, stock, image_url, active, created_at, updated_at
+			FROM products
+			WHERE active = TRUE
+			ORDER BY id
+			""")
+	List<Product> findAll();
 
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.id = :id")
-    Optional<Product> findActiveById(@Param("id") Long id);
+	@Select("""
+			SELECT id, title, description, price_cents, currency, stock, image_url, active, created_at, updated_at
+			FROM products
+			WHERE id = #{id} AND active = TRUE
+			""")
+	Product selectById(Long id);
+
+	default Optional<Product> findById(Long id) {
+		return Optional.ofNullable(selectById(id));
+	}
 }

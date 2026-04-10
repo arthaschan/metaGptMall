@@ -1,65 +1,150 @@
 <template>
-  <div>
-    <el-card>
+  <div class="health-view">
+    <el-card class="box-card">
       <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>后端健康检查</span>
-          <el-button type="primary" @click="fetchHealth">点击检查</el-button>
+        <div class="card-header">
+          <span>Backend Health Check</span>
+          <el-button 
+            type="primary" 
+            :loading="loading" 
+            @click="checkHealth"
+            icon="Refresh"
+          >
+            Check
+          </el-button>
         </div>
       </template>
-      <div v-if="loading">
-        <el-icon class="is-loading"><Loading /></el-icon>
-        正在检查后端服务...
+      
+      <div v-if="error" class="error-message">
+        <el-alert
+          title="Connection Failed"
+          type="error"
+          :description="error"
+          show-icon
+          closable
+        />
       </div>
-      <div v-else-if="error">
-        <el-alert title="请求失败" type="error" :description="error" show-icon />
-      </div>
-      <div v-else-if="healthData">
-        <el-alert title="后端服务正常" type="success" show-icon />
+      
+      <div v-if="healthData">
+        <el-descriptions title="Backend Status" border>
+          <el-descriptions-item label="Status">
+            <el-tag type="success" v-if="healthData.status === 'UP'">UP</el-tag>
+            <el-tag type="danger" v-else>DOWN</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="Timestamp">
+            {{ formatDate(healthData.timestamp) }}
+          </el-descriptions-item>
+        </el-descriptions>
+        
         <el-divider />
-        <h4>返回数据：</h4>
-        <pre style="background-color: #f5f7fa; padding: 16px; border-radius: 4px; overflow: auto;">{{ formattedData }}</pre>
+        
+        <div v-if="healthData.components">
+          <h3>Components</h3>
+          <el-table :data="componentData" style="width: 100%">
+            <el-table-column prop="name" label="Component" />
+            <el-table-column prop="status" label="Status">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === 'UP' ? 'success' : 'danger'">
+                  {{ scope.row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        
+        <div v-else>
+          <p>Raw response data:</p>
+          <pre class="raw-data">{{ JSON.stringify(healthData, null, 2) }}</pre>
+        </div>
       </div>
-      <div v-else>
-        <p>点击上方按钮检查后端服务状态。</p>
+      
+      <div v-else-if="!error && !loading" class="empty-state">
+        <p>Click "Check" to test backend connection</p>
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
+import { computed, ref } from 'vue'
 import http from '../api/http'
+import type { AxiosError } from 'axios'
 
-interface HealthResponse {
-  // 根据实际后端接口定义调整
-  status?: string
+interface HealthData {
+  status: string
   timestamp?: string
-  [key: string]: any
+  components?: Record<string, { status: string }>
 }
 
 const loading = ref(false)
-const error = ref('')
-const healthData = ref<HealthResponse | null>(null)
+const error = ref<string | null>(null)
+const healthData = ref<HealthData | null>(null)
 
-const fetchHealth = async () => {
+const checkHealth = async () => {
   loading.value = true
-  error.value = ''
-  healthData.value = null
+  error.value = null
+  
   try {
-    // 请求后端 GET /api/health 端点
-    const data = await http.get<HealthResponse>('/health')
-    healthData.value = data
-  } catch (err: any) {
-    error.value = err.message || '未知错误'
-    console.error('获取健康状态失败:', err)
+    const response = await http.get<HealthData, HealthData>('/api/health')
+    healthData.value = response
+  } catch (err) {
+    const axiosError = err as AxiosError
+    if (axiosError.response) {
+      // Server responded with error status
+      error.value = `Server error: ${axiosError.response.status} ${axiosError.response.statusText}`
+    } else if (axiosError.request) {
+      // Request made but no response
+      error.value = 'No response from server. Make sure backend is running on port 8080.'
+    } else {
+      // Something else happened
+      error.value = `Error: ${axiosError.message}`
+    }
+    healthData.value = null
   } finally {
     loading.value = false
   }
 }
 
-const formattedData = computed(() => {
-  return JSON.stringify(healthData.value, null, 2)
+const formatDate = (timestamp?: string) => {
+  if (!timestamp) return 'N/A'
+  return new Date(timestamp).toLocaleString()
+}
+
+const componentData = computed(() => {
+  if (!healthData.value?.components) return []
+  return Object.entries(healthData.value.components).map(([name, data]) => ({
+    name,
+    status: data.status
+  }))
 })
 </script>
+
+<style scoped>
+.health-view {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message {
+  margin-bottom: 20px;
+}
+
+.raw-data {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
+}
+</style>

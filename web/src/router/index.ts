@@ -13,7 +13,6 @@ const router = createRouter({
       name: 'health',
       component: HealthView
     }
-    // 后续可在此添加商品、购物车、订单等路由
   ]
 })
 

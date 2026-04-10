@@ -1,11 +1,11 @@
-# MetaGPT Mall - 前端项目
+# Web Frontend - metaGptMall
 
-此项目为 MetaGPT Mall 电商平台的前端部分，使用 Vue 3 (Composition API) + Vite + Element Plus 构建。
+Vue 3 frontend application for the metaGptMall e-commerce platform.
 
-## 快速开始
+## Prerequisites
 
-### 环境要求
-- Node.js (推荐 18.x 或更高版本)
-- npm 或 yarn 或 pnpm
+- Node.js 18+ 
+- npm 9+
 
-### 安装依赖
+## Project Setup
+

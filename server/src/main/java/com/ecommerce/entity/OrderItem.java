@@ -1,15 +1,9 @@
 package com.ecommerce.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_items")
-@Data
 public class OrderItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,14 +23,54 @@ public class OrderItem {
     @Column(name = "unit_price_cents", nullable = false)
     private Integer unitPriceCents;
 
-    @Column(name = "product_title", nullable = false)
-    private String productTitle;
+    @Column(name = "title_snapshot", nullable = false)
+    private String titleSnapshot;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    public Long getId() {
+        return id;
+    }
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Order getOrder() {
+        return order;
+    }
+
+    public void setOrder(Order order) {
+        this.order = order;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public Integer getUnitPriceCents() {
+        return unitPriceCents;
+    }
+
+    public void setUnitPriceCents(Integer unitPriceCents) {
+        this.unitPriceCents = unitPriceCents;
+    }
+
+    public String getTitleSnapshot() {
+        return titleSnapshot;
+    }
+
+    public void setTitleSnapshot(String titleSnapshot) {
+        this.titleSnapshot = titleSnapshot;
+    }
 }

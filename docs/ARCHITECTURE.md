@@ -1,48 +1,49 @@
-# 架构设计（MVP）
+# 架构设计
 
-## 1. 总览
-- 前端（Vue3 + Element Plus）通过 REST API 调用后端。
-- 后端（Spring Boot 3）提供 Auth/Catalog/Cart/Order 等模块。
-- MySQL 持久化用户、商品、购物车、订单数据。
-- Redis 做商品详情缓存（可扩展为会话/幂等/限流）。
-- RocketMQ 发送订单创建事件 `order.created`，消费者用于异步处理扩展。
+## 1. 当前本地实现基线
 
-## 2. 模块划分（后端）
-- auth：注册/登录、JWT
-- catalog：商品列表/商品详情（详情带缓存）
-- cart：加购/查询购物车
-- order：下单（事务 + 扣库存）+ 发 MQ
-- common：统一配置、常量、序列化
-- mq：RocketMQ producer/consumer
+- 前端：Vue 3 + Vite，通过 `/api` 代理访问后端。
+- 后端：Spring Boot 3。
+- 本地默认数据层：H2 + MyBatis。
+- 本地默认目标：无需 MySQL、Redis、RocketMQ，也能直接启动并联调。
+- 当前优先保证的接口：
+	- `GET /api/health`
+	- `GET /api/products`
+	- `GET /api/products/{id}`
 
-## 3. 关键业务流
-### 3.1 注册/登录
-1) `POST /api/auth/register` 创建用户（BCrypt hash）
-2) `POST /api/auth/login` 校验密码并签发 JWT
+## 2. 当前后端模块划分
 
-JWT Claims 约定：
-- `sub`：userId
-- `role`：user/admin
+- common：安全配置、异常处理、健康检查。
+- product：商品查询接口、DTO、service、MyBatis mapper。
+- entity：当前以 POJO 为主，供 MyBatis 映射和后续扩展复用。
+
+## 3. 当前本地业务流
+
+### 3.1 健康检查
+
+1. 前端调用 `GET /api/health`
+2. 后端返回 JSON 状态
 
 ### 3.2 商品列表/详情
-- 列表直接读 MySQL（MVP）
-- 详情先读 Redis（key `ecom:product:{id}`），未命中读 MySQL 并回填缓存
 
-### 3.3 加购
-- 购物车与条目落 MySQL
-- 加购会读取商品当前 price 作为 `unit_price_cents` 写入 cart_items
+1. 前端调用 `GET /api/products` 或 `GET /api/products/{id}`
+2. 后端通过 MyBatis mapper 直接查询 H2 内存库
+3. H2 在启动时通过 `schema.sql` 与 `data.sql` 自动初始化
 
-### 3.4 下单（库存策略 A：下单即扣库存）
-事务内：
-1) 读取 cart_items
-2) 逐条执行 `UPDATE products SET stock=stock-qty WHERE stock>=qty` 扣库存
-3) 创建 orders + order_items（价格与标题快照）
-4) 清空 cart_items
-5) 发送 RocketMQ `order.created:v1`
+## 4. 后续集成架构（非当前本地默认）
 
-失败回滚：库存不足/DB 错误都会回滚库存与订单写入。
+以下内容属于后续扩展方向，不应覆盖当前默认本地实现：
 
-## 4. 配置与环境
-- 端口：`docs/PORTS.md`
-- 基础设施：`docs/INFRA.md`
-- 需要手动修改：`docker-compose.yml`、`backend/src/main/resources/application.yml`
+- MySQL：持久化用户、商品、购物车、订单数据。
+- Redis：商品详情缓存、会话、幂等、限流等扩展。
+- RocketMQ：订单创建事件 `order.created` 的异步处理。
+- auth：注册/登录、JWT。
+- cart：加购/查询购物车。
+- order：下单、库存扣减、异步事件。
+
+## 5. 配置与环境
+
+- 本地启动基线：见 `docs/LOCAL_IMPL_BASELINE.md`
+- 端口说明：见 `docs/PORTS.md`
+- 集成期基础设施：见 `docs/INFRA.md`
+- 本地主要配置文件：`server/src/main/resources/application.yml`、`web/vite.config.ts`

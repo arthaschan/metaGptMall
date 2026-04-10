@@ -201,3 +201,48 @@ def build_impl_and_run(task: str, context: str) -> str:
     )
 
     return _call_metagpt_sdk(_section_prompt("Senior Full-Stack Engineer", task, context, impl_expected))
+
+
+def build_impl_fix_and_run(task: str, context: str, current_files: str, verification_report: str) -> str:
+    """Generate fix-only file blocks based on verification failures."""
+    fix_expected = (
+        "You are fixing an implementation that already exists in the repository.\n"
+        "Use the verification failures to repair the current code with the smallest coherent change set.\n"
+        "Preserve passing behavior and do not rewrite unrelated modules.\n"
+        "\n"
+        "You are given:\n"
+        "  - the original task\n"
+        "  - repository constraints/context\n"
+        "  - CURRENT FILE SNAPSHOT for the files produced so far\n"
+        "  - VERIFICATION REPORT from real local commands\n"
+        "\n"
+        "Your job:\n"
+        "  1. Read the verification failures carefully.\n"
+        "  2. Modify only the files needed to fix them.\n"
+        "  3. Output ONLY full replacement file blocks for changed files.\n"
+        "  4. Do not add placeholder TODOs or explanations outside brief inline comments.\n"
+        "\n"
+        "Output format — use ONLY the following fenced-block syntax for every changed file:\n"
+        "\n"
+        "    ```file path=server/path/to/File.java\n"
+        "    // full file content here\n"
+        "    ```\n"
+        "\n"
+        "    ```file path=web/src/views/SomeView.vue\n"
+        "    <!-- full file content here -->\n"
+        "    ```\n"
+        "\n"
+        "Rules:\n"
+        "  - Paths MUST start with server/ or web/.\n"
+        "  - Output ONLY files that must change to fix the reported failures.\n"
+        "  - Every emitted file must be complete and runnable, not a diff.\n"
+    )
+
+    fix_prompt = (
+        f"=== ORIGINAL TASK ===\n{task}\n\n"
+        f"=== REPOSITORY CONTEXT ===\n{context}\n\n"
+        f"=== CURRENT FILE SNAPSHOT ===\n{current_files}\n\n"
+        f"=== VERIFICATION REPORT ===\n{verification_report}\n\n"
+        f"=== OUTPUT REQUIREMENTS ===\n{fix_expected}\n"
+    )
+    return _call_metagpt_sdk(fix_prompt)
