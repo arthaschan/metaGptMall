@@ -122,7 +122,78 @@ impl 模式要求 LLM 以以下格式输出每个文件：
 - runner 会解析所有 ```` ```file path=... ```` 块，并将文件写入仓库对应路径
 - 原始 LLM 输出保存在 `metagpt_outputs/<timestamp>/IMPL_RAW.md` 以备审阅
 
+## 4c. 只生成前端（web/）的可靠方式（推荐）
 
+当你发现 impl 模式没有生成 `web/`（即 `IMPL_RAW.md` 中没有 ` ```file path=web/... ` 块）时，推荐使用“前端专用任务文件”来强制 LLM 输出可解析的 web 文件块。
+
+### 4c.1 准备任务文件：METAGPT_TASK_WEB_ONLY.md
+
+任务文件必须包含**闭合**的 file block 示例，并明确禁止输出 ```vue / ```ts 等其它代码块，否则 writer 无法落盘。
+
+最小模板（示例，按需改任务内容即可）：
+
+```text
+只生成前端 Vue 3 项目代码，写入 web/ 目录；不要生成任何 server/ 文件。
+
+强制输出格式（非常重要）：你必须对每个文件使用且只使用如下 fenced block 格式输出，否则程序不会写入磁盘：
+
+```file path=web/<relative-path>
+<full file content>
+```
+
+禁止输出 ```vue / ```ts / ```js 等其它类型代码块；禁止用 Markdown 标题包裹文件内容；禁止省略任何必须文件。
+
+必须生成的文件清单（每个都要输出一个 ` ```file path=... ` 块）：
+- web/package.json
+- web/vite.config.ts
+- web/index.html
+- web/src/main.ts
+- web/src/App.vue
+- web/src/router/index.ts
+- web/src/api/http.ts
+- web/src/views/HealthView.vue
+- web/README.md
+
+功能要求：
+- Vue 3（Composition API）+ Vite
+- HealthView.vue 调用 GET /api/health 并展示结果
+- 本地联调：vite proxy 或 README 说明 CORS（二选一）
+```
+
+> 提示：在终端创建包含 ``` 的任务文件，建议用 heredoc，避免引号/转义问题：
+>
+> ```bash
+> cat > METAGPT_TASK_WEB_ONLY.md <<'EOF'
+> ...（内容里可以安全包含 ```file path=... ```）...
+> EOF
+> ```
+
+### 4c.2 运行生成前端（写入 web/）
+
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode impl --task-file METAGPT_TASK_WEB_ONLY.md --overwrite
+```
+
+### 4c.3 先 dry-run 预览（不落盘）
+
+```bash
+cd /Users/arthas/git/metaGptMall
+python3 -m metagpt_team.run_team --mode impl --task-file METAGPT_TASK_WEB_ONLY.md --dry-run
+```
+
+### 4c.4 排查：为什么没有生成 web/
+
+第一入口：检查原始输出是否包含 `web/` 的 file blocks：
+
+```bash
+ls -1 metagpt_outputs | tail -n 1
+# 假设最新目录是 metagpt_outputs/20260410_153000（自行替换）
+grep -n "```file path=web/" metagpt_outputs/20260410_153000/IMPL_RAW.md | head -n 50
+```
+
+- 如果为空：说明 LLM 没按要求输出 `web/` file blocks（常见原因是它输出成了 ```vue / ```ts 代码块）；请强化任务文件里的“禁止其它代码块 + 必须输出文件清���”。
+- 如果不为空但仍未写入：请查看运行日志中的 `[impl_writer] SKIP ...` 提示，通常是路径不合法（不是以 `web/` 开头）或文件已存在且未开启 `--overwrite`。
 ## 5. 输出
 
 ### plan 模式（默认）
