@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: ecommerce-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/ecommerce?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+    username: test
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+app:
+  jwt:
+    secret: ecommerce-secret-key-change-in-production-please
+    expiration-ms: 86400000 # 24 hours
+  redis:
+    product-ttl-seconds: 60
+  rocketmq:
+    namesrv-addr: localhost:9876
+    producer-group: ecommerce-backend-producer
+    consumer-group: ecommerce-backend-consumer
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+logging:
+  level:
+    com.ecommerce: DEBUG
+    org.springframework.security: DEBUG
