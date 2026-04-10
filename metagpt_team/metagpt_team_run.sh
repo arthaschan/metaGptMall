@@ -104,4 +104,7 @@ if [[ -n "${OVERWRITE}" ]]; then
   ARGS+=("--overwrite")
 fi
 
-"${PYTHON}" "${ROOT_DIR}/metagpt_team/run_team.py" "${ARGS[@]}"
+(
+  cd "${ROOT_DIR}"
+  "${PYTHON}" -m metagpt_team.run_team "${ARGS[@]}"
+)
