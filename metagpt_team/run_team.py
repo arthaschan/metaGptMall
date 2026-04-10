@@ -115,8 +115,7 @@ def main() -> int:
         write_text(out_dir / "IMPL_RAW.md", raw)
 
         blocks = parse_file_blocks(raw)
-        written = write_impl_files(blocks, repo_root=ROOT)
-
+        written = write_impl_files(blocks, repo_root=ROOT, dry_run=args.dry_run, overwrite=args.overwrite)
         write_text(
             outs.summary,
             (
